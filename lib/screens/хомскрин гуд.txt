@@ -1,0 +1,205 @@
+// lib/screens/home_screen.dart
+
+import 'package:flutter/material.dart';
+
+/// Модель подзадачи
+class Subtask {
+  final String title;
+  bool isDone;
+  Subtask({required this.title, this.isDone = false});
+}
+
+/// Модель задачи
+class Task {
+  final String title;
+  final DateTime date;
+  final String status;
+  final List<Subtask> subtasks;
+
+  Task({
+    required this.title,
+    required this.date,
+    this.status = 'Запланировано',
+    this.subtasks = const [],
+  });
+
+  /// % выполнения по подзадачам
+  double get progress {
+    if (subtasks.isEmpty) return 0;
+    final done = subtasks.where((s) => s.isDone).length;
+    return done / subtasks.length;
+  }
+}
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({Key? key}) : super(key: key);
+
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  DateTime _selectedDate = DateTime.now();
+
+  // Примерный набор задач; в реальном приложении замените на загрузку из БД
+  final List<Task> _allTasks = [
+    Task(
+      title: 'Подготовить презентацию',
+      date: DateTime.now(),
+      status: 'В работе',
+      subtasks: [
+        Subtask(title: 'Собрать данные'),
+        Subtask(title: 'Нарисовать слайды'),
+        Subtask(title: 'Прогнать репетицию'),
+      ],
+    ),
+    Task(
+      title: 'Купить продукты',
+      date: DateTime.now(),
+      status: 'Запланировано',
+      subtasks: [
+        Subtask(title: 'Молоко'),
+        Subtask(title: 'Хлеб'),
+        Subtask(title: 'Яйца'),
+      ],
+    ),
+    Task(
+      title: 'Написать отчёт',
+      date: DateTime.now().add(Duration(days: 1)),
+      status: 'Запланировано',
+      subtasks: [],
+    ),
+  ];
+
+  List<Task> get _tasksForSelectedDate {
+    return _allTasks.where((t) {
+      return t.date.year == _selectedDate.year &&
+             t.date.month == _selectedDate.month &&
+             t.date.day == _selectedDate.day;
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tasks = _tasksForSelectedDate;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Мой Планер'),
+      ),
+      body: Column(
+        children: [
+          const SizedBox(height: 8),
+          // Встроенный календарь
+          CalendarDatePicker(
+            initialDate: _selectedDate,
+            firstDate: DateTime(DateTime.now().year - 1),
+            lastDate: DateTime(DateTime.now().year + 2),
+            onDateChanged: (date) {
+              setState(() {
+                _selectedDate = date;
+              });
+            },
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: tasks.isEmpty
+                ? const Center(child: Text('Нет задач на этот день'))
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: tasks.length,
+                    itemBuilder: (context, i) => TaskCard(
+                      task: tasks[i],
+                      onSubtaskToggle: (idx, value) {
+                        setState(() {
+                          tasks[i].subtasks[idx].isDone = value;
+                        });
+                      },
+                    ),
+                  ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // TODO: перейти на экран создания задачи, передав _selectedDate
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+/// Виджет карточки задачи с статусом, прогрессом и подзадачами
+class TaskCard extends StatelessWidget {
+  final Task task;
+  final void Function(int subtaskIndex, bool isDone) onSubtaskToggle;
+
+  const TaskCard({
+    Key? key,
+    required this.task,
+    required this.onSubtaskToggle,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 3,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Заголовок и статус
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    task.title,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: task.status == 'Готово'
+                        ? Colors.green[100]
+                        : Colors.orange[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(task.status),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Линейка прогресса
+            if (task.subtasks.isNotEmpty) ...[
+              LinearProgressIndicator(
+                value: task.progress,
+                minHeight: 6,
+              ),
+              const SizedBox(height: 4),
+              Text('${(task.progress * 100).round()}%'),
+              const SizedBox(height: 8),
+            ],
+            // Список подзадач
+            ...List.generate(task.subtasks.length, (idx) {
+              final sub = task.subtasks[idx];
+              return CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(sub.title),
+                value: sub.isDone,
+                onChanged: (val) {
+                  if (val != null) onSubtaskToggle(idx, val);
+                },
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
