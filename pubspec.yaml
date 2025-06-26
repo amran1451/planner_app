@@ -16,6 +16,18 @@ dependencies:
   intl: ^0.20.2
   fl_chart: ^1.0.0
 
+  digital_diary_app:
+    path: ../digital_diary_app
+
+  nutrition_tracker:
+    path: ../nutrition_tracker
+
+  finance_tracker:
+    path: ../finance_tracker
+
+  workout_app:
+    path: ../workout_app
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
